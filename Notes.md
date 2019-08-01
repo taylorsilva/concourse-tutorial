@@ -8,6 +8,10 @@ Can docker-compose run concourse on windows? YES IT DOES
 
 To start with the user should fork the repo
 
+The tutorial should be part of CI. Every release of concourse should be tested against the tutorial to ensure it stays up-to-date.
+
+The test-suite should execute every step of the tutorial as a user would
+
 - The basics
   - start with a pipeline that's a single job that does everything
     - introduce **Gets** that download you code
