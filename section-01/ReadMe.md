@@ -114,3 +114,25 @@ concourse-tutorial
 ```
 
 We see a single directory called `concourse-tutorial`. If our task had more inputs we would see more directories, each matching the name of their respective `input` name.
+
+Time for the last section. The `run` section tells Concourse what script/binary to execute inside the container. You can also pass in as many arguments to your executable as you want. 
+
+```yaml
+run:
+  path: sh
+  args: 
+    - -c
+    - |
+      #!/bin/bash
+      
+      cd sample-app
+      go test
+```
+
+In our `run` section we're telling Concourse to execute `sh` and pass in two arguments: 
+
+1. `-c` which tells shell to read and execute commands from the next string
+2. our "string" of commands, which is our original bash script.
+
+This is how we can embed our script inside our tasks config. Later on we'll extract the script from our task config. For now this works just fine. 
+
