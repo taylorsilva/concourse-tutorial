@@ -36,7 +36,7 @@ platform: linux
 
 We'll have our task run inside the `alpine` image from Docker Hub. We'll talk about the `type: registry-image` section in a later chapter.
 
-> NOTE: Concourse only cares about the filesystem that comes from the container images from Docker Hub. All `CMD` and `ENTRYPOINT` commands are ignored.
+> NOTE: Concourse only cares about the filesystem that comes from the container image from Docker Hub. All `CMD` and `ENTRYPOINT` commands are not passed along to Concourse.
 
 ```yaml
 image_resource:
@@ -77,7 +77,7 @@ Our pipeline is now done! We can create the pipeline in Concourse and run it.
 
 To create a pipeline in Concourse, we just pass in our YAML file. This is also where we tell Concourse what to name our pipeline. The name of a pipeline doesn't exist in the pipeline's YAML, it is always set during creation of the pipeline. Concourse will prompt you to confirm the configuration, enter `y` to continue.
 
-```bash
+```
 $ fly -t local set-pipeline --pipeline hello-world-pipeline --config hello-world-pipeline.yml
 jobs:
   job hello-world has been added:
@@ -127,13 +127,15 @@ You'll notice a large red `x` appear beside the plus button. Pressing that butto
 
 If you click on the black bar that says `hello-world-task` you should see the following output with timestamps to the left.
 
+> Note: The first two lines show Concourse downloading the container image. Concourse will cache the container image so subsequent runs won't waste time downloading the image again.
+
 ```
 fetching alpine@sha256:acd3ca9941a85e8ed16515bfc5328e4e2f8c128caa72959a58a127b7801ee01f
 9d48c3bd43c5 [==========================================] 2.7MiB/2.7MiB
 Hello, World!
 ```
 
-It worked! The colour of the `hello-world` job should now be green, indicating that the last build was successful (had an exit status of `0`).
+It worked! The colour of the `hello-world` job should now be green, indicating that the last build was successful (had an exit status of `0`). If you trigger the job a second time you won't see the container image being downloaded, just the output "Hello, World!".
 
 ### Part Two - Resources
 
@@ -165,4 +167,82 @@ resources:
       interval: 1m
 ```
 
-In the update pipeline YAML, we've added one resource object. Concourse comes with a couple default resource types bundled in the Concourse binary, the `time` resource being one of the defaults. Other resources can be downloaded or added manually to linux workers. We'll talk more about resources later.
+In the updated pipeline YAML, we've added one resource object. Concourse comes with a couple default resource types bundled in the Concourse binary, the `time` resource being one of the defaults. Other resources can be downloaded or added manually to linux workers. We'll talk more about resources later. You can find a list of resources [here](https://github.com/concourse/concourse/wiki/Resource-Types). The git repository for the time resource is [here](https://github.com/concourse/time-resource).
+
+For now the important thing to know is that `resources` in Concourse emit `version` objects. What a "version" object is depends on the resources implementation. For the `time` resource, a new version object is created at the interval we specify. So every minute our `every-minute` time resource will emit a new version object that will tell Concourse to trigger our `hello-world` job.
+
+Now that we defined our `resource` we can use it to automatically trigger the job in our pipeline. We do this by adding a `get` step to our job's `plan`. Setting `trigger: true` for a `get` step means whenever a new version from `every-minute` is emitted.
+
+```yaml
+jobs:
+  - name: hello-world
+    plan:
+      - get: every-minute
+        trigger: true
+      - task: hello-world-task
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: alpine
+          run:
+            path: echo
+            args:
+              - "Hello World!"
+
+resources:
+  - name: every-minute
+    type: time
+    icon: clock-outline
+    source:
+      interval: 1m
+```
+
+Let's set our updated pipeline.
+
+```
+$ fly -t local set-pipeline -p hello-world-pipeline -c hello-world-pipeline.yml
+resources:
+  resource every-minute has been added:
++ icon: clock-outline
++ name: every-minute
++ source:
++   interval: 1m
++ type: time
+
+jobs:
+  job hello-world has changed:
+  name: hello-world
+  plan:
++ - get: every-minute
++   trigger: true
+  - config:
+      container_limits: {}
+      image_resource:
+        source:
+          repository: alpine
+        type: registry-image
+      platform: linux
+      run:
+        args:
+        - Hello World!
+        path: echo
+    task: hello-world-task
+
+apply configuration? [yN]: y
+configuration updated
+```
+
+![pipeline part two](image-pipeline-part-two.png)
+
+They're connected! The `hello-world` job should trigger every minute now.
+
+To recap what we did:
+
+1. Created a `time` resource called `every-minute` that emits a new version object every minute
+2. Connected the `every-minute` resource to our `hello-world` job by adding a `get` step to our job's plan
+
+
+
+That's it for our `hello-world-pipeline`. You should have a basic idea of how jobs and resources work together to automatically run "things". The following sections will dig into each of these concepts with more detail and also show you best practices for structuring your pipeline's code within your existing codebase.
