@@ -1,30 +1,28 @@
 # Section 01 - Hello, World Pipeline
 
-The goal of this section is to create your first pipeline in Concourse that prints `Hello, World!`.
+The goal of this section is to create your first pipeline in Concourse that prints `Hello, World!`. We're going to follow Concourse's best practices while we build this pipeline.
 
-### Part One -  Jobs & Steps
+### Part One - Hello World Task
 
-Create a YAML file called `hello-world-pipeline.yml` anywhere on your system and open it in your favourite editor.
+In this first part we're going to create a Concourse task and execute the task using the `fly` cli.
 
-A pipeline's YAML has to contain, at minimum, a `jobs` section, which contains a list of jobs. Let's add our first job to our pipeline:
+In the fork of this repo, make a folder called `ci` with following sub-folder structure.
 
-```yaml
-jobs:
-  - name: hello-world
+```
+ci
+├── dockerfiles        # where docker files are stored
+├── pipelines          # where pipeline config files are stored
+└── tasks              # where task config files are stored
+    └── scripts        # where scripts used by task files are are stored
 ```
 
-We've created a job and now we need to describe to Concourse what our job should do. We do this in the `plan` section of a job. A `plan` takes a list of `steps` that run in the order they're listed in. We'll add a `task` step called `hello-world-task` as the only step in our `plan`.
+Create a task file called `hello-world.yml` under `ci/tasks`.
 
-```yaml
-jobs:
-  - name: hello-world
-    plan:
-      - task: hello-world-task
+```
+touch ci/tasks/hello-world.yml
 ```
 
-A `task` step has a mandatory `config` section. The `config` section tells Concourse how to run a `task` step. You can do **anything** inside a `task` section that you can do from your terminal. 
-
-The `config` section has three mandatory sections that we need to fill out: `platform`, `image_resoruce`, and `run`.
+A task config has has three mandatory sections that need to be filled out: `platform`, `image_resoruce`, and `run`.
 
 `platform`: tells Concourse which type of worker to run this `task` on. Our local Concourse has one `linux` worker. You can create `windows` and `darwin` workers as well.
 
@@ -34,9 +32,9 @@ platform: linux
 
 `image_resource`: what container image the `task` should run inside of. Every `task` that Concourse runs must be run inside a container image. There is _default_ container image that Concourse uses. You must tell Concourse exactly which container image to use. You can use any image up on Docker Hub or a local image registry that you have access to.
 
-We'll have our task run inside the `alpine` image from Docker Hub. We'll talk about the `type: registry-image` section in a later chapter.
+We'll have our task run inside the `alpine` image from Docker Hub. We'll talk about the `type: registry-image` field in a later chapter.
 
-> NOTE: Concourse only cares about the filesystem that comes from the container image from Docker Hub. All `CMD` and `ENTRYPOINT` commands are not passed along to Concourse.
+> NOTE: Concourse only cares about the filesystem that comes from the container image from Docker Hub. All `CMD` and `ENTRYPOINT` commands are not passed along to Concourse to execute.
 
 ```yaml
 image_resource:
@@ -54,7 +52,147 @@ run:
     - "Hello, World!"
 ```
 
-Let's put all the above YAML bits into our `hello-world-pipeline.yml`:
+Put together, our task config should look like this.
+
+```yaml
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: alpine
+
+run:
+  path: echo
+  args:
+    - "Hello, World!"
+```
+
+Let's run it using the `fly execute` command.
+
+```
+$ fly -t local execute --config ci/tasks/hello-world.yml
+uploading concourse-tutorial done
+executing build 1 at http://localhost:8080/builds/1
+initializing
+fetching alpine@sha256:acd3ca9941a85e8ed16515bfc5328e4e2f8c128caa72959a58a127b7801ee01f
+9d48c3bd43c5 [==========================================] 2.7MiB/2.7MiB
+running echo Hello, World!
+Hello, World!
+succeeded
+```
+
+If we run the task again, we won't see the the alpine image being downloaded. Concourse caches container images used by tasks.
+
+```
+$ fly -t local execute --config ci/tasks/hello-world.yml
+uploading concourse-tutorial done
+executing build 2 at http://localhost:8080/builds/2
+initializing
+running echo Hello, World!
+Hello, World!
+succeeded
+```
+
+Now let's further break down the task config by putting the `echo Hello, World!` into its own file. This is very useful for when you have large scripts. Embedding scripts inside your task config is handy but can start looking ugly if your script is large.
+
+In the `ci/tasks/scripts` folder create a file called `hello-world.sh` and make it executable.
+
+```
+touch ci/tasks/scripts/hello-world.sh && chmod +x ci/tasks/scripts/hello-world.sh
+```
+
+Populate the script with the following.
+
+```
+#!/bin/sh
+echo Hello, World!
+```
+
+Locally you should be able to run it.
+
+```
+./ci/tasks/scripts/hello-world.sh
+Hello, World!
+```
+
+This is the script we'll run to get Concourse to say "Hello, World!".
+
+Now we have to tell Concourse about how to run this script from the task config. Let's modify our task config so it runs our script. 
+
+```yaml
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: alpine
+
+inputs:
+  - name: repo
+
+run:
+  path: repo/ci/tasks/scripts/hello-world.sh
+```
+
+We update the `run` section to instead call our `hello-world.sh` script. We also added a new section here called `inputs`. 
+
+`inputs` is where we tell Concourse what volumes we want mounted into this task's container. All volumes that concourse mounts are placed in the working directory of the container. `inputs` can come from other tasks and we'll see how that's done later. Using `fly` we can pass volumes to concourse based on local folders that we have. We'll pass in this repo as a volume using the `--input` flag. Concourse will then mount our volume under `./repo` inside the container.
+
+```
+$ fly -t local execute --config ci/tasks/hello-world.yml --input repo=.
+uploading repo done
+executing build 3 at http://localhost:8080/builds/3
+initializing
+running repo/ci/tasks/scripts/hello-world.sh
+Hello, World!
+succeeded
+```
+
+Congratulations! You successfully ran a task on Concourse! Next, let's see how we put this task into a pipeline.
+
+### Part Two -  Jobs & Steps
+
+In this part, we're going to take the previous task config and script, and put them into a single pipeline config file, `hello.yml`. After we create and run that pipeline we'll split them up again into three files: `hello.yml`, `hello-world.yml`, and `hello-world.sh`.
+
+Create a YAML file called `hello.yml` in `ci/pipelines`.
+
+```
+touch ci/pipelines/hello.yml
+```
+
+Let's add a `jobs` section to our pipeline's config, which contains a list of jobs. We only have one job so it's a short list.
+
+```yaml
+jobs:
+  - name: hello-world
+```
+
+We've created a job and now we need to describe to Concourse what our job should do. We do this in the `plan` section of a job. A `plan` takes a list of `steps` that run in the order they're listed in. We'll add a `task` step called `hello-world-task` as the only step in our `plan`.
+
+```yaml
+jobs:
+  - name: hello-world
+    plan:
+      - task: hello-world-task
+```
+
+A `task` step has a mandatory `config` section. The `config` section tells Concourse how to run a `task` step. You can do **anything** inside a `task` section that you can do from your terminal. You can copy-paste the task config from `ci/tasks/hello-world.yml` file under the `config` key.
+
+```yaml
+config:
+  platform: linux
+  image_resource:
+    type: registry-image
+    source:
+      repository: alpine
+  run:
+    path: echo
+    args:
+      - "Hello, World!"
+```
+
+Let's put all the above YAML bits into our `hello.yml`:
 
 ```yaml
 jobs:
@@ -73,7 +211,7 @@ jobs:
               - "Hello, World!"
 ```
 
-Our pipeline is now done! We can create the pipeline in Concourse and run it.
+Our pipeline is now done. We can create the pipeline in Concourse and run it.
 
 To create a pipeline in Concourse, we just pass in our YAML file. This is also where we tell Concourse what to name our pipeline. The name of a pipeline doesn't exist in the pipeline's YAML, it is always set during creation of the pipeline. Concourse will prompt you to confirm the configuration, enter `y` to continue.
 
@@ -127,17 +265,15 @@ You'll notice a large red `x` appear beside the plus button. Pressing that butto
 
 If you click on the black bar that says `hello-world-task` you should see the following output with timestamps to the left.
 
-> Note: The first two lines show Concourse downloading the container image. Concourse will cache the container image so subsequent runs won't waste time downloading the image again.
-
 ```
-fetching alpine@sha256:acd3ca9941a85e8ed16515bfc5328e4e2f8c128caa72959a58a127b7801ee01f
-9d48c3bd43c5 [==========================================] 2.7MiB/2.7MiB
 Hello, World!
 ```
 
-It worked! The colour of the `hello-world` job should now be green, indicating that the last build was successful (had an exit status of `0`). If you trigger the job a second time you won't see the container image being downloaded, just the output "Hello, World!".
+It worked! The colour of the `hello-world` job should now be green, indicating that the last build was successful (had an exit status of `0`).
 
-### Part Two - Resources
+In the next part we'll automate the running of the pipeline split up this pipeline file into three parts: a pipeline config, task config, and task script.
+
+### Part Three - Resources TODO
 
 Right now, this pipeline is 100% manual. It will never automatically run for any reason. It only runs when someone presses the trigger button for the job. Let's change that! Let's say "Hello, World!" every minute, because that's how much we like saying "Hello" to the world!
 
