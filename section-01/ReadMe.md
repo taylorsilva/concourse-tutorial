@@ -169,9 +169,9 @@ resources:
 
 In the updated pipeline YAML, we've added one resource object. Concourse comes with a couple default resource types bundled in the Concourse binary, the `time` resource being one of the defaults. Other resources can be downloaded or added manually to linux workers. We'll talk more about resources later. You can find a list of resources [here](https://github.com/concourse/concourse/wiki/Resource-Types). The git repository for the time resource is [here](https://github.com/concourse/time-resource).
 
-For now the important thing to know is that `resources` in Concourse emit `version` objects. What a "version" object is depends on the resources implementation. For the `time` resource, a new version object is created at the interval we specify. So every minute our `every-minute` time resource will emit a new version object that will tell Concourse to trigger our `hello-world` job.
+For now the important thing to know is that `resources` in Concourse emit `version` objects. What a "version" object is depends on the resources implementation. For the `time` resource, a new version object is created at the interval we specify. So every minute our `every-minute` time resource will emit a new version object.
 
-Now that we defined our `resource` we can use it to automatically trigger the job in our pipeline. We do this by adding a `get` step to our job's `plan`. Setting `trigger: true` for a `get` step means whenever a new version from `every-minute` is emitted.
+Now that we defined our `resource` we can use it to automatically trigger the job in our pipeline. We do this by adding a `get` step to our job's `plan`. Setting `trigger: true` for a `get` step means whenever a new version from `every-minute` is emitted Concourse will trigger the job this `get` step is part of.
 
 ```yaml
 jobs:
