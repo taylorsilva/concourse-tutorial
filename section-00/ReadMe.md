@@ -30,6 +30,12 @@ After the `concourse/concourse` and `postgres` images are downloaded from Docker
 
 Congratulations, you have Concourse running locally!
 
+To stop running your local concourse, run:
+
+```bash
+docker-compose down
+```
+
 ### Download Fly
 
 Fly is the CLI tool used to interact with Concourse. From the homepage you'll see icons/links to the fly CLI based on your OS. Click the link appropriate for your OS or run:
@@ -109,4 +115,4 @@ The fly CLI is able to do everything the web UI does and much more. Run `fly` to
 
 
 
-This is the end of Section-00. Proceed to Section-01.
+This is the end of Section-00. All future sections assume you have your local concourse running. Proceed to Section-01.
