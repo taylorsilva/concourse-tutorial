@@ -259,7 +259,13 @@ If you click on the header of the pipeline's dashboard box, where it says `hello
 
 ![pipeline legend and hello-world job](image-job-and-legend.png)
 
-To run our `hello-world-pipeline` we need to trigger the `hello-world` job. To do this, click on the job and press the plus button (`+`) in the top-right corner. This will trigger a new `build` for our `hello-world` job. Each time a job is ran, Concourse logs that as a `build`. 
+To run our `hello-world-pipeline` we need to trigger the `hello-world` job. You can trigger the `hello-world` job using `fly` or the web UI. For `fly` you can run
+
+```
+fly -t local trigger-job -p hello-world-pipeline/hello-world
+```
+
+To trigger the job from the web UI, click on the job (from the dashboard or pipeline page) and press the plus button (`+`) in the top-right corner. This will trigger a new `build` for our `hello-world` job. Each time a job is ran, Concourse logs that as a `build`.
 
 You'll notice a large red `x` appear beside the plus button. Pressing that button will abort the current build for the job, if the build's state is `pending` or `started`. From this screen we're able to see each step in our job run along with the `stdout` and `stderr`.
 
@@ -271,7 +277,7 @@ Hello, World!
 
 It worked! The colour of the `hello-world` job should now be green, indicating that the last build was successful (had an exit status of `0`).
 
-In the next part we'll automate the running of the pipeline split up this pipeline file into three parts: a pipeline config, task config, and task script.
+In the next part we'll automate the running of the pipeline and split up the pipeline into three files: a pipeline config, task config, and task script.
 
 ### Part Three - Resources TODO
 
