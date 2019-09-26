@@ -283,7 +283,7 @@ In the next part we'll automate the running of the pipeline and split up the pip
 
 Right now, this pipeline is 100% manual. It will never automatically run for any reason. It only runs when someone presses the trigger button for the job. Let's change that! Let's say "Hello, World!" every minute, because that's how much we like saying "Hello" to the world!
 
-Open up the `hello-world-pipeline.yml` and add a new top-level section called `resources`. Like the `jobs` section of the pipeline, `resources` takes in a list of resources.
+Open up the `hello-world-pipeline.yml` and add a new top-level section called `resources`. The `resources` section takes in a list of resources.
 
 ```yaml
 jobs:
@@ -311,7 +311,7 @@ resources:
 
 In the updated pipeline YAML, we've added one resource object. Concourse comes with a couple default resource types bundled in the Concourse binary, the `time` resource being one of the defaults. Other resources can be downloaded or added manually to linux workers. We'll talk more about resources later. You can find a list of resources [here](https://github.com/concourse/concourse/wiki/Resource-Types). The git repository for the time resource is [here](https://github.com/concourse/time-resource).
 
-For now the important thing to know is that `resources` in Concourse emit `version` objects. What a "version" object is depends on the resources implementation. For the `time` resource, a new version object is created at the interval we specify. So every minute our `every-minute` time resource will emit a new version object.
+For now the important thing to know is that resources in Concourse emit `version` objects. What a `version` object is depends on the resource's implementation. For the `time` resource, a new version object is created at the interval we specify. So every minute our `every-minute` time resource will emit a new version object.
 
 Now that we defined our `resource` we can use it to automatically trigger the job in our pipeline. We do this by adding a `get` step to our job's `plan`. Setting `trigger: true` for a `get` step means whenever a new version from `every-minute` is emitted Concourse will trigger the job this `get` step is part of.
 
@@ -383,8 +383,7 @@ They're connected! The `hello-world` job should trigger every minute now.
 To recap what we did:
 
 1. Created a `time` resource called `every-minute` that emits a new version object every minute
-2. Connected the `every-minute` resource to our `hello-world` job by adding a `get` step to our job's plan
+1. Connected the `every-minute` resource to our `hello-world` job by adding a `get` step to our job's plan
 
 
-
-That's it for our `hello-world-pipeline`. You should have a basic idea of how jobs and resources work together to automatically run "things". The following sections will dig into each of these concepts with more detail and also show you best practices for structuring your pipeline's code within your existing codebase.
+That's it for our `hello-world-pipeline`. You should have a basic idea of how jobs and resources work together to automatically run stuff in Concourse. The following sections will dig into each of these concepts with more detail and also show you best practices for structuring your pipeline's code within your existing codebase.
