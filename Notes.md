@@ -19,3 +19,10 @@ The test-suite should execute every step of the tutorial as a user would.
 - Start building a real pipeline.
   - Fork this repo
   - Create a new pipeline with a single git resource. Check that it works.
+
+
+
+### Other Topics:
+
+- How to add custom resources to my pipeline?
+- How to create a task image?
